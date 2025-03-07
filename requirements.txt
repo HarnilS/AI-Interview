@@ -1,0 +1,10 @@
+streamlit
+dataclasses
+pyttsx3
+speechrecognition
+langchain_groq
+langchain
+langchain-community
+PyPDF2
+nltk
+faiss-cpu
