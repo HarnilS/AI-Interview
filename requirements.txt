@@ -11,4 +11,5 @@ sentence-transformers
 threading
 os
 HuggingFaceEmbeddings
-langchain_community
+langchain-community
+langchain-groq
