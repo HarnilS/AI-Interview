@@ -98,7 +98,7 @@ def main_app():
 ### Interview Structure:
 1. **Resume-Based Questions:** Ask 2-3 line questions focused on key skills, projects, and experience.
 2. **DSA Questions:** Ask three concise DSA questions (easy, medium, hard).
-3. **Coding Questions:** Ask 1-2 short coding problems relevant to the candidate's job role.
+3. **Coding Questions:** Ask three short coding problems relevant to the candidate's job role.
 
 ### Interview Flow:
 - Start by asking the candidate to introduce themselves.
