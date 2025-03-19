@@ -15,7 +15,7 @@ from langchain_community.vectorstores import FAISS
 from langchain.text_splitter import NLTKTextSplitter
 from PyPDF2 import PdfReader
 import nltk
-nltk.download('punkt')
+nltk.download('punkt_tab')
 from typing import Literal
 from groq import Groq
 
@@ -68,7 +68,7 @@ def main_app():
 
     def process_resume(resume):
         """Extracts text from PDF/TXT resume and converts it into embeddings."""
-        nltk.download('punkt')
+        nltk.download('punkt_tab')
         
         text = ""
         if resume.type == "application/pdf":
