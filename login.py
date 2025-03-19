@@ -10,11 +10,14 @@ from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationChain
 from langchain.prompts.prompt import PromptTemplate
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import FAISS
+# from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 from langchain.text_splitter import NLTKTextSplitter
 from PyPDF2 import PdfReader
 import nltk
+nltk.download('punkt')
 from typing import Literal
+from groq import Groq
 
 # Hardcoded credentials for demo purposes (replace with secure auth in production)
 VALID_USERNAME = "user"
@@ -99,10 +102,10 @@ def main_app():
 
         if "resume_screen" not in st.session_state:
             # Use environment variable for API key for better security
-            groq_api_key = os.getenv("GROQ_API_KEY", "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")
-            # groq_api_key = st.secrets["groq_api"]
+            # groq_api_key = os.getenv("GROQ_API_KEY", "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")
+            client = Groq(api_key=st.secrets["auth_key"])
             llm = ChatGroq(
-                groq_api_key=groq_api_key,
+                groq_api_key=client,
                 model_name="llama-3.3-70b-versatile",
                 temperature=0.7
             )
