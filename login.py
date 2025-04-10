@@ -22,7 +22,8 @@ import numpy as np
 
 # Interview duration set to 30 minutes (1800 seconds)
 INTERVIEW_DURATION = 1800
-
+MAX_QUESTIONS = 12
+    
 def speak(text):
     """Convert text to speech in a separate thread."""
     def tts():
@@ -32,63 +33,7 @@ def speak(text):
     thread = threading.Thread(target=tts)
     thread.start()
 
-class VideoTransformer(VideoTransformerBase):
-    """Video transformer for cheating detection using OpenCV DNN without dlib."""
-    def _init_(self):
-        # Load OpenCV DNN face detection model
-        self.net = cv2.dnn.readNetFromCaffe("models/deploy.prototxt", "models/res10_300x300_ssd_iter_140000.caffemodel")
-        self.cheating_detected = False
 
-    def transform(self, frame):
-        """Process each video frame to detect cheating."""
-        img = frame.to_ndarray(format="bgr24")
-        height, width = img.shape[:2]
-
-        # Prepare image for DNN face detection
-        blob = cv2.dnn.blobFromImage(cv2.resize(img, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0))
-        self.net.setInput(blob)
-        detections = self.net.forward()
-
-        num_faces = 0
-        looking_away = False
-
-        # Process each detected face
-        for i in range(detections.shape[2]):
-            confidence = detections[0, 0, i, 2]
-            if confidence > 0.5:
-                num_faces += 1
-                box = detections[0, 0, i, 3:7] * np.array([width, height, width, height])
-                (startX, startY, endX, endY) = box.astype("int")
-                cv2.rectangle(img, (startX, startY), (endX, endY), (0, 255, 0), 2)
-
-                # Simple side face detection based on bounding box asymmetry
-                face_width = endX - startX
-                face_height = endY - startY
-                center_x = (startX + endX) // 2
-                left_half = center_x - startX
-                right_half = endX - center_x
-                asymmetry_ratio = abs(left_half - right_half) / max(left_half, right_half)
-
-                # If the face is significantly asymmetrical, assume looking away
-                if asymmetry_ratio > 0.3:  # Threshold can be adjusted
-                    looking_away = True
-                    cv2.putText(img, "Looking away!", (startX, startY - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-
-        # Display cheating indicators
-        if num_faces == 0:
-            cv2.putText(img, "No face detected!", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        if num_faces > 1:
-            cv2.putText(img, "Multiple faces detected!", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        if looking_away:
-            cv2.putText(img, "Looking away detected!", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-
-        # Determine cheating status
-        self.cheating_detected = num_faces == 0 or num_faces > 1 or looking_away
-        if not self.cheating_detected:
-            cv2.putText(img, "Monitoring...", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-
-        st.session_state["cheating_detected"] = self.cheating_detected
-        return img
 
 def main_app():
     """Main application logic for the AI Interview System."""
@@ -98,18 +43,21 @@ def main_app():
     resume = st.file_uploader("Upload your resume", type=["pdf", "txt"])
     auto_play = st.checkbox("Let AI interviewer speak!")
     voice_input = st.checkbox("Use voice input for answers")
+    
+    st.sidebar.title("📊 Interview Progress")
+    if "question_count" not in st.session_state:
+        st.session_state.question_count = 0
+    st.sidebar.progress(st.session_state.question_count / (MAX_QUESTIONS -1))
+    st.sidebar.write(f"**Question:** {st.session_state.question_count}/{MAX_QUESTIONS}")
 
-    # Initialize session state variables
-    if "cheating_detected" not in st.session_state:
-        st.session_state["cheating_detected"] = False
-    if "cheating_warnings" not in st.session_state:
-        st.session_state["cheating_warnings"] = 0
-    if "time_up" not in st.session_state:
-        st.session_state["time_up"] = False
-    if "interview_stopped" not in st.session_state:
-        st.session_state["interview_stopped"] = False
-    if "waiting_for_ready" not in st.session_state:
-        st.session_state["waiting_for_ready"] = False
+    with st.expander("📌 Instructions"):
+        st.markdown("""
+        - You have 30 minutes.
+        - The webcam will monitor for cheating.
+        - Answer in voice or text.
+        - AI will ask resume, DSA and coding questions.
+        """)
+
 
     # Display remaining time
     if "start_time" in st.session_state:
@@ -122,20 +70,9 @@ def main_app():
         minutes, seconds = divmod(int(remaining_time), 60)
         st.sidebar.write(f"Time Remaining: {minutes:02d}:{seconds:02d}")
 
-    # Webcam monitoring
-    webrtc_streamer(
-        key="example",
-        video_transformer_factory=VideoTransformer,
-        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-    )
+    
+    
 
-    # Handle cheating warnings
-    if st.session_state["cheating_detected"]:
-        st.session_state.cheating_warnings += 1
-        if st.session_state.cheating_warnings >= 3:
-            st.session_state.interview_stopped = True
-        else:
-            st.warning(f"Cheating detected! Warning {st.session_state.cheating_warnings}/3")
 
     @dataclass
     class Message:
@@ -198,6 +135,7 @@ def main_app():
 - Use 2-3 line questions.
 - Keep follow-ups precise and goal-oriented.
 - If the candidate struggles, provide short hints instead of direct answers.
+- Display Thank You message after completion of all questions.
 
 Let's start the interview. Ask the candidate to introduce themselves.
                
@@ -215,7 +153,7 @@ Candidate: {input}
             )
             st.session_state.start_time = time.time()
             st.session_state.question_count = 0
-
+            
     def transcribe_audio():
         """Transcribe audio input from the user."""
         recognizer = sr.Recognizer()
@@ -247,7 +185,7 @@ Candidate: {input}
 
     def answer_callback():
         """Process the user's answer and generate the next AI question."""
-        if st.session_state.question_count >= 12:
+        if st.session_state.question_count >= MAX_QUESTIONS-1:
             st.write("Thank you for completing the interview!")
             return
         human_answer = st.session_state.get("answer", "")
@@ -264,13 +202,6 @@ Candidate: {input}
     if position and resume:
         initialize_session()
 
-        # Check if interview should stop
-        if st.session_state.interview_stopped:
-            if st.session_state.time_up:
-                st.error("You did not respond in time. Interview stopped.")
-            elif st.session_state.cheating_warnings >= 3:
-                st.error("Cheating detected three times. Interview stopped.")
-            return
 
         # Display chat history
         chat_container = st.container()
@@ -282,9 +213,9 @@ Candidate: {input}
         # Handle response time enforcement
         if st.session_state.waiting_for_ready:
             with st.container():
-                st.write("You have 10 seconds to start responding.")
+                st.write("You have 20 seconds to start responding.")
                 if st.button("Ready to Answer"):
-                    if time.time() - st.session_state.question_time <= 10:
+                    if time.time() - st.session_state.question_time <= 20:
                         st.session_state.waiting_for_ready = False
                     else:
                         st.session_state.time_up = True
