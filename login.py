@@ -19,6 +19,14 @@ from typing import Literal
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 import cv2
 import numpy as np
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+import io
+from langchain_core.messages import HumanMessage
+import re
 
 # Interview duration set to 30 minutes (1800 seconds)
 INTERVIEW_DURATION = 1800
@@ -33,8 +41,6 @@ def speak(text):
     thread = threading.Thread(target=tts)
     thread.start()
 
-
-
 def main_app():
     """Main application logic for the AI Interview System."""
     st.title("AI Interview System")
@@ -48,7 +54,7 @@ def main_app():
     if "question_count" not in st.session_state:
         st.session_state.question_count = 0
     st.sidebar.progress(st.session_state.question_count / (MAX_QUESTIONS -1))
-    st.sidebar.write(f"**Question:** {st.session_state.question_count}/{MAX_QUESTIONS}")
+    st.sidebar.write(f"Question: {st.session_state.question_count}/{MAX_QUESTIONS}")
 
     with st.expander("📌 Instructions"):
         st.markdown("""
@@ -57,7 +63,6 @@ def main_app():
         - Answer in voice or text.
         - AI will ask resume, DSA and coding questions.
         """)
-
 
     # Display remaining time
     if "start_time" in st.session_state:
@@ -70,9 +75,93 @@ def main_app():
         minutes, seconds = divmod(int(remaining_time), 60)
         st.sidebar.write(f"Time Remaining: {minutes:02d}:{seconds:02d}")
 
-    
-    
+    # Define email sending function with dynamic file name
+    def send_transcript_email(transcript_text, receiver_email, file_name):
+        sender_email = "demo.55855.demo@gmail.com"  # TODO: Handle securely with environment variables or a config file
+        sender_password = "eiqm cenr gmbz ieyg"  # Use App Password if 2FA is enabled
+        subject = "Interview Transcript with Rating and Review"
+        body = "Please find the attached interview transcript with rating and review."
 
+        msg = MIMEMultipart()
+        msg['From'] = sender_email
+        msg['To'] = receiver_email
+        msg['Subject'] = subject
+
+        msg.attach(MIMEText(body, 'plain'))
+
+        # Create a text file in memory
+        transcript_file = io.StringIO(transcript_text)
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(transcript_file.getvalue())
+        encoders.encode_base64(part)
+        part.add_header('Content-Disposition', f"attachment; filename={file_name}.txt")
+        msg.attach(part)
+
+        try:
+            server = smtplib.SMTP('smtp.gmail.com', 587)
+            server.starttls()
+            server.login(sender_email, sender_password)
+            text = msg.as_string()
+            server.sendmail(sender_email, receiver_email, text)
+            server.quit()
+            st.success(f"Transcript with rating and review sent successfully as {file_name}.txt!")
+        except Exception as e:
+            st.error(f"Failed to send email: {e}")
+
+    # Function to extract name using AI
+    def extract_name_with_ai(response, llm):
+        name_prompt = f"""
+        Extract the candidate's name from the following introduction. The name is likely to be mentioned in the first few sentences. If no name is found, return "Candidate".
+
+        Introduction:
+        {response}
+
+        Candidate's Name:
+        """
+        messages = [HumanMessage(content=name_prompt)]
+        name_response = llm.invoke(messages)
+        name = name_response.content.strip()
+        name = re.sub(r'[^\w\s]', '', name).replace(" ", "_")
+        return name if name else "Candidate"
+
+    # Add End Interview button in the sidebar
+    if st.sidebar.button("End Interview"):
+        if 'resume_history' in st.session_state:
+            # Compile the transcript
+            transcript = ""
+            for msg in st.session_state.resume_history:
+                if msg.origin == "ai":
+                    transcript += f"AI: {msg.message}\n"
+                else:
+                    transcript += f"Human: {msg.message}\n"
+            
+            # Extract name from the first human response using AI
+            first_human_response = next((msg.message for msg in st.session_state.resume_history if msg.origin == "human"), "")
+            llm = st.session_state.resume_screen.llm
+            file_name = extract_name_with_ai(first_human_response, llm)
+            
+            # Generate rating and review using the existing AI model
+            rating_prompt = f"""
+You are an AI interviewer. Below is the transcript of an interview. Please rate the candidate's performance out of 10 and provide a brief review.
+
+Transcript:
+{transcript}
+
+Rating and Review:
+"""
+            with st.spinner("Generating rating and review..."):
+                messages = [HumanMessage(content=rating_prompt)]
+                rating_response = llm.invoke(messages)
+                rating_text = rating_response.content
+            
+            # Append rating and review to the transcript
+            updated_transcript = transcript + "\n\nRating and Review:\n" + rating_text
+            
+            # Send the updated transcript via email with dynamic file name
+            receiver_email = "shuklaharnil.21.cs@iite.indusuni.ac.in"
+            send_transcript_email(updated_transcript, receiver_email, file_name)
+        else:
+            st.warning("No interview transcript available to send.")
 
     @dataclass
     class Message:
@@ -201,7 +290,6 @@ Candidate: {input}
 
     if position and resume:
         initialize_session()
-
 
         # Display chat history
         chat_container = st.container()
