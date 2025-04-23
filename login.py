@@ -45,7 +45,7 @@ def main_app():
     """Main application logic for the AI Interview System."""
     st.title("AI Interview System")
 
-    position = st.selectbox("Select the position:", ["Data Analyst", "Software Engineer", "Cyber Security", "Web Development"])
+    position = st.selectbox("Select the position:", ["Data Analyst", "Software Engineer", "Cyber Security", "Web Development","Data Science","AI/ML","Blockchain"])
     resume = st.file_uploader("Upload your resume", type=["pdf", "txt"])
     auto_play = st.checkbox("Let AI interviewer speak!")
     voice_input = st.checkbox("Use voice input for answers")
