@@ -1,16 +1,19 @@
 streamlit
-dataclasses; python_version < "3.7"
+dataclasses
 pyttsx3
 SpeechRecognition
-pyaudio ; platform_system == "Windows"  # Needed for microphone access
 langchain
-langchain-community
 langchain-groq
-transformers
+langchain-community
+huggingface-hub
 sentence-transformers
 faiss-cpu
 PyPDF2
 nltk
 streamlit-webrtc
-opencv-python-headless
+opencv-python
 numpy
+smtplib
+email
+pydub
+python-dotenv
