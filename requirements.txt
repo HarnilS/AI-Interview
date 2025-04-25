@@ -1,6 +1,6 @@
 streamlit
 streamlit-webrtc
-langchain=
+langchain
 langchain-core
 langchain-community
 langchain-groq
