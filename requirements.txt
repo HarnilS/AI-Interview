@@ -19,4 +19,4 @@ openai
 groq
 pyaudio
 email-validator
-cv2
+
