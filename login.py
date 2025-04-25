@@ -17,6 +17,7 @@ import nltk
 nltk.download('punkt_tab')
 from typing import Literal
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+import cv2
 import numpy as np
 import smtplib
 from email.mime.multipart import MIMEMultipart
