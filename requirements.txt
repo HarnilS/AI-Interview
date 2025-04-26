@@ -10,3 +10,4 @@ nltk
 PyPDF2
 faiss-cpu
 sentence-transformers
+pyaudio
