@@ -16,7 +16,6 @@ from PyPDF2 import PdfReader
 import nltk
 nltk.download('punkt_tab')
 from typing import Literal
-import cv2
 import numpy as np
 import smtplib
 from email.mime.multipart import MIMEMultipart
