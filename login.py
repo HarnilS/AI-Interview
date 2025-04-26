@@ -25,7 +25,6 @@ from email import encoders
 import io
 from langchain_core.messages import HumanMessage
 import re
-import pyaudio
 
 # Interview duration set to 30 minutes (1800 seconds)
 INTERVIEW_DURATION = 1800
